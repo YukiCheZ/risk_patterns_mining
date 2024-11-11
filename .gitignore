@@ -1,1 +1,4 @@
 /data
+/data_test
+.DS_Store
+__pycache__
