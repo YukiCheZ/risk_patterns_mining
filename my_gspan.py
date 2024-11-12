@@ -40,7 +40,7 @@ def construct_graph(data_dir):
                 id_str, name = line.strip().split(",")[:2]
                 vid = int(id_str)
                 name_int = map_name(name)
-                graph.add_vertex(vid, v_type_mapping['account'], {'name': name_int})
+                graph.add_vertex(vid, {'type' : v_type_mapping['account'], 'name': name_int})
     except Exception as e:
         print(f"Error reading account file: {e}")
 
@@ -51,7 +51,7 @@ def construct_graph(data_dir):
                 id_str, name = line.strip().split(",")[:2]
                 vid = map_card_id(id_str)
                 name_int = map_name(name)
-                graph.add_vertex(vid, v_type_mapping['card'], {'name': name_int})
+                graph.add_vertex(vid, {'type' :  v_type_mapping['card'], 'name': name_int})
     except Exception as e:
         print(f"Error reading card file: {e}")
 
@@ -62,14 +62,13 @@ def construct_graph(data_dir):
                 parts = line.strip().split(",")
                 source_id = int(parts[0])
                 target_id = int(parts[1])
-                amt = convert_amt_to_int(parts[3])  # 注意这里是 parts[3] 对应 amt
-                strategy_name = extract_last_char_as_int(parts[4])  # parts[4] 对应 strategy_name
-                buscode = extract_last_char_as_int(parts[6])  # parts[6] 对应 buscode
+                amt = convert_amt_to_int(parts[3])
+                strategy_name = extract_last_char_as_int(parts[4])
+                buscode = extract_last_char_as_int(parts[6])
                 graph.add_edge(
                     eid=None,  # 自动生成边ID
                     frm=source_id,
                     to=target_id,
-                    elb=e_type_mapping['account_to_account'],
                     attributes={'amt': amt, 'strategy_name': strategy_name, 'buscode': buscode}
                 )
     except Exception as e:
@@ -82,14 +81,13 @@ def construct_graph(data_dir):
                 parts = line.strip().split(",")
                 source_id = int(parts[0])
                 target_id = map_card_id(parts[1])
-                amt = convert_amt_to_int(parts[3])  # parts[3] 对应 amt
-                strategy_name = extract_last_char_as_int(parts[4])  # parts[4] 对应 strategy_name
-                buscode = extract_last_char_as_int(parts[6])  # parts[6] 对应 buscode
+                amt = convert_amt_to_int(parts[3])
+                strategy_name = extract_last_char_as_int(parts[4])
+                buscode = extract_last_char_as_int(parts[6])
                 graph.add_edge(
                     eid=None,  # 自动生成边ID
                     frm=source_id,
                     to=target_id,
-                    elb=e_type_mapping['account_to_card'],
                     attributes={'amt': amt, 'strategy_name': strategy_name, 'buscode': buscode}
                 )
     except Exception as e:

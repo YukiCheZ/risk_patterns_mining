@@ -3,16 +3,14 @@ import itertools
 
 VACANT_EDGE_ID = -1
 VACANT_VERTEX_ID = -1
-VACANT_EDGE_LABEL = -1
-VACANT_VERTEX_LABEL = -1
 VACANT_GRAPH_ID = -1
 AUTO_EDGE_ID = -1
 
 class Edge(object):
     """Edge class that supports multiple attributes."""
 
-    def __init__(self, eid=VACANT_EDGE_ID, frm=VACANT_VERTEX_ID, to=VACANT_VERTEX_ID,
-                 elb=VACANT_EDGE_LABEL, attributes=None):
+    def __init__(self, eid=VACANT_EDGE_ID, frm=VACANT_VERTEX_ID, 
+                 to=VACANT_VERTEX_ID, attributes=None):
         """Initialize Edge instance with multiple attributes.
 
         Args:
@@ -25,7 +23,6 @@ class Edge(object):
         self.eid = eid
         self.frm = frm
         self.to = to
-        self.elb = elb
         self.attributes = attributes if attributes is not None else {}
 
     def get_attribute(self, key):
@@ -39,30 +36,27 @@ class Edge(object):
 class Vertex(object):
     """Vertex class that supports multiple attributes and efficient edge lookup."""
 
-    def __init__(self, vid=VACANT_VERTEX_ID, vlb=VACANT_VERTEX_LABEL, attributes=None):
+    def __init__(self, vid=VACANT_VERTEX_ID, attributes=None):
         """Initialize Vertex instance with multiple attributes and an edge dictionary.
 
         Args:
             vid: id of this vertex.
-            vlb: label of this vertex (optional).
             attributes: dictionary of vertex attributes (e.g., labels, types).
         """
         self.vid = vid
-        self.vlb = vlb
         self.attributes = attributes if attributes is not None else {}
         self.edges = collections.defaultdict(list)
 
-    def add_edge(self, eid, frm, to, elb=None, attributes=None):
+    def add_edge(self, eid, frm, to, attributes=None):
         """Add an outgoing edge with multiple attributes, allowing multiple edges to the same target.
 
         Args:
             eid: edge id.
             frm: source vertex id.
             to: destination vertex id.
-            elb: edge label (optional).
             attributes: dictionary of edge attributes.
         """
-        edge = Edge(eid, frm, to, elb, attributes)
+        edge = Edge(eid, frm, to, attributes)
         self.edges[to].append(edge)  # Append edge to the list for the target vertex
 
     def get_edges(self, to):
@@ -117,28 +111,26 @@ class Graph(object):
         
         return num_edges
 
-    def add_vertex(self, vid, vlb, attributes=None):
+    def add_vertex(self, vid, attributes=None):
         """Add a vertex to the graph with multiple attributes.
 
         Args:
             vid: id of the vertex.
-            vlb: label of the vertex.
             attributes: dictionary of vertex attributes (optional).
         """
         if vid in self.vertices:
             print(f"Vertex already exists.")
             return self
-        self.vertices[vid] = Vertex(vid, vlb, attributes)
+        self.vertices[vid] = Vertex(vid, attributes)
         return self
 
-    def add_edge(self, eid, frm, to, elb=None, attributes=None):
+    def add_edge(self, eid, frm, to, attributes=None):
         """Add an edge to the graph with multiple attributes.
 
         Args:
             eid: edge id.
             frm: source vertex id.
             to: destination vertex id.
-            elb: edge label (optional).
             attributes: dictionary of edge attributes.
         """
         if frm not in self.vertices or to not in self.vertices:
@@ -147,9 +139,9 @@ class Graph(object):
         if self.eid_auto_increment:
             eid = next(self.counter)
         # Add the edge to the source vertex
-        self.vertices[frm].add_edge(eid, frm, to, elb, attributes)
+        self.vertices[frm].add_edge(eid, frm, to, attributes)
         if self.is_undirected:
             # Add the edge to the target vertex as well, if the graph is undirected
-            self.vertices[to].add_edge(eid, to, frm, elb, attributes)
+            self.vertices[to].add_edge(eid, to, frm, attributes)
         return self
 
