@@ -1,4 +1,6 @@
 from my_graph import Graph
+from my_graph import VACANT_GRAPH_ID
+from my_graph import AUTO_EDGE_ID
 
 # 数据目录路径
 data_dir = "./data/"
@@ -96,7 +98,98 @@ def construct_graph(data_dir):
     print("Graph construction completed.")
     return graph
 
-# 构建图并检查节点和边的数量
-graph = construct_graph(data_dir)
-print(f"Number of vertices: {graph.get_num_vertices()}")
-print(f"Number of edges: {graph.get_num_edges()}")
+
+class DFSedge(object):
+    """DFSedge class representing an edge in a DFS code."""
+
+    def __init__(self, frm, to, vevlb):
+        """Initialize DFSedge instance.
+        
+        Args:
+            frm (int): The starting vertex identifier.
+            to (int): The ending vertex identifier.
+            vevlb (tuple): A tuple containing (frm_attributes, edge_attributes, to_attributes).
+        """
+        self.frm = frm
+        self.to = to
+        self.vevlb = vevlb
+
+    def __eq__(self, other):
+        """Check equivalence of DFSedge based on attributes, ignoring vertex IDs.
+        
+        Two edges are considered equal if their vertex and edge attributes are the same.
+        """
+        # Unpack vertex and edge attributes
+        frm_attrs_self, edge_attrs_self, to_attrs_self = self.vevlb
+        frm_attrs_other, edge_attrs_other, to_attrs_other = other.vevlb
+
+        # Simplified comparison: compare attributes only
+        return (frm_attrs_self == frm_attrs_other and
+                edge_attrs_self == edge_attrs_other and
+                to_attrs_self == to_attrs_other)
+
+    def __ne__(self, other):
+        """Check if not equal."""
+        return not self.__eq__(other)
+
+    def __repr__(self):
+        """String representation of a DFSedge."""
+        return '(frm={}, to={}, vevlb={})'.format(self.frm, self.to, self.vevlb)
+    
+
+class DFScode(list):
+    """DFScode is a list of DFSedge, representing a sequence of edges in a DFS traversal."""
+
+    def __init__(self):
+        """Initialize DFScode."""
+        self.rmpath = list()
+
+    def __eq__(self, other):
+        """Check equivalence of DFScode."""
+        if len(self) != len(other):
+            return False
+        return all(self[i] == other[i] for i in range(len(self)))
+
+    def __ne__(self, other):
+        """Check if not equal."""
+        return not self.__eq__(other)
+
+    def __repr__(self):
+        """String representation of DFScode."""
+        return '[' + ', '.join(str(dfsedge) for dfsedge in self) + ']'
+
+    def push_back(self, frm, to, vevlb):
+        """Add an edge to the DFScode."""
+        self.append(DFSedge(frm, to, vevlb))
+        return self
+
+    def to_graph(self, gid=VACANT_GRAPH_ID, is_undirected=False):
+        """Construct a graph from the DFS code."""
+        g = Graph(gid, is_undirected=is_undirected, eid_auto_increment=True)
+        for dfsedge in self:
+            frm, to, (vlb1, elb, vlb2) = dfsedge.frm, dfsedge.to, dfsedge.vevlb
+            g.add_vertex(frm, vlb1)
+            g.add_vertex(to, vlb2)
+            g.add_edge(AUTO_EDGE_ID, frm, to, elb)
+        return g
+
+    def from_graph(self, g):
+        """Build a DFScode from a given graph."""
+        raise NotImplementedError('Not implemented yet.')
+
+    # 是否适用于多重图？
+    def build_rmpath(self):
+        """Build the right-most path in the DFS code."""
+        self.rmpath = []
+        old_frm = None
+        for i in range(len(self) - 1, -1, -1):
+            dfsedge = self[i]
+            frm, to = dfsedge.frm, dfsedge.to
+            if frm < to and (old_frm is None or to == old_frm):
+                self.rmpath.append(i)
+                old_frm = frm
+        return self
+
+    def get_num_vertices(self):
+        """Return the number of unique vertices in the DFS code."""
+        return len(set(dfsedge.frm for dfsedge in self) | set(dfsedge.to for dfsedge in self))
