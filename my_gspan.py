@@ -201,29 +201,38 @@ def generate_1edge_frequent_subgraphs(g, min_support, is_undirected):
     """Generate frequent 1-edge subgraphs from a list of graphs."""
     vevlb_counter = collections.Counter()
     vevlb_counted = set()
-    for v in g.vertices():
+
+    for v in g.vertices.values():
         for to, edges in v.edges.items():
             for e in edges:
-                v1_attrs = v.attributes
-                v2_attrs = g.vertices[to].attributes
-                e_attrs = e.attributes
+                # 将属性字典转换为排序后的元组，确保可哈希性
+                v1_attrs = tuple(sorted(v.attributes.items()))
+                v2_attrs = tuple(sorted(g.vertices[to].attributes.items()))
+                e_attrs = tuple(sorted(e.attributes.items()))
 
+                # 保持无向图顶点顺序一致
                 if is_undirected and v.vid > to:
                     v1_attrs, v2_attrs = v2_attrs, v1_attrs
 
-                vevlb_counted.add((v1_attrs, e_attrs, v2_attrs))
-                vevlb_counter[(v1_attrs, e_attrs, v2_attrs)] += 1
-    
-    fre_sub_gs = list()
+                # 使用元组进行计数和记录
+                if (v1_attrs, e_attrs, v2_attrs) not in vevlb_counted:
+                    vevlb_counted.add((v1_attrs, e_attrs, v2_attrs))
+                    vevlb_counter[(v1_attrs, e_attrs, v2_attrs)] += 1
+
+    fre_sub_gs = []
 
     for (v1_attrs, e_attrs, v2_attrs), count in vevlb_counter.items():
         if count >= min_support:
+            # 创建频繁1阶子图
             sub_g = Graph(VACANT_GRAPH_ID, is_undirected=is_undirected, eid_auto_increment=True)
-            sub_g.add_vertex(0, v1_attrs)
-            sub_g.add_vertex(1, v2_attrs)
-            sub_g.add_edge(0, 0, 1, e_attrs)
+            # 转换回字典以设置顶点和边属性
+            sub_g.add_vertex(0, dict(v1_attrs))
+            sub_g.add_vertex(1, dict(v2_attrs))
+            sub_g.add_edge(0, 0, 1, dict(e_attrs))
             fre_sub_gs.append(sub_g)
-    
+
     return fre_sub_gs
 
-                
+g = construct_graph(data_dir)
+fre_sub_gs = generate_1edge_frequent_subgraphs(g, 10000, is_undirected=False)
+print(f'Number of 1edge_frequent_pattern: {len(fre_sub_gs)}')
