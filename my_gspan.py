@@ -1,3 +1,5 @@
+import collections
+import itertools
 from my_graph import Graph
 from my_graph import VACANT_GRAPH_ID
 from my_graph import AUTO_EDGE_ID
@@ -193,3 +195,35 @@ class DFScode(list):
     def get_num_vertices(self):
         """Return the number of unique vertices in the DFS code."""
         return len(set(dfsedge.frm for dfsedge in self) | set(dfsedge.to for dfsedge in self))
+
+
+def generate_1edge_frequent_subgraphs(g, min_support, is_undirected):
+    """Generate frequent 1-edge subgraphs from a list of graphs."""
+    vevlb_counter = collections.Counter()
+    vevlb_counted = set()
+    for v in g.vertices():
+        for to, edges in v.edges.items():
+            for e in edges:
+                v1_attrs = v.attributes
+                v2_attrs = g.vertices[to].attributes
+                e_attrs = e.attributes
+
+                if is_undirected and v.vid > to:
+                    v1_attrs, v2_attrs = v2_attrs, v1_attrs
+
+                vevlb_counted.add((v1_attrs, e_attrs, v2_attrs))
+                vevlb_counter[(v1_attrs, e_attrs, v2_attrs)] += 1
+    
+    fre_sub_gs = list()
+
+    for (v1_attrs, e_attrs, v2_attrs), count in vevlb_counter.items():
+        if count >= min_support:
+            sub_g = Graph(VACANT_GRAPH_ID, is_undirected=is_undirected, eid_auto_increment=True)
+            sub_g.add_vertex(0, v1_attrs)
+            sub_g.add_vertex(1, v2_attrs)
+            sub_g.add_edge(0, 0, 1, e_attrs)
+            fre_sub_gs.append(sub_g)
+    
+    return fre_sub_gs
+
+                
