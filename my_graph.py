@@ -106,7 +106,6 @@ class Graph(object):
             attributes: dictionary of vertex attributes (optional).
         """
         if vid in self.vertices:
-            print("Vertex already exists.")
             return self
         self.vertices[vid] = Vertex(vid, attributes)
         return self

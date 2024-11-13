@@ -196,57 +196,22 @@ class DFScode(list):
         return len(set(dfsedge.frm for dfsedge in self) | set(dfsedge.to for dfsedge in self))
 
 
-# def generate_1edge_frequent_subgraphs(g, min_support, is_undirected):
-#     """Generate frequent 1-edge subgraphs from a list of graphs."""
-#     vevlb_counter = collections.Counter()
-#     vevlb_counted = set()
-
-#     for v in g.vertices.values():
-#         for to, edges in v.edges.items():
-#             for e in edges:
-#                 # 将属性字典转换为排序后的元组，确保可哈希性
-#                 v1_attrs = tuple(v.attributes.items())
-#                 v2_attrs = tuple(g.vertices[to].attributes.items())
-#                 e_attrs = tuple(e.attributes.items())
-
-#                 # 保持无向图顶点顺序一致
-#                 if is_undirected and v.vid > to:
-#                     v1_attrs, v2_attrs = v2_attrs, v1_attrs
-
-#                 # 使用元组进行计数和记录
-#                 if (v1_attrs, e_attrs, v2_attrs) not in vevlb_counted:
-#                     vevlb_counted.add((v1_attrs, e_attrs, v2_attrs))
-#                     vevlb_counter[(v1_attrs, e_attrs, v2_attrs)] += 1
-
-#     fre_sub_gs = []
-
-#     for (v1_attrs, e_attrs, v2_attrs), count in vevlb_counter.items():
-#         if count >= min_support:
-#             # 创建频繁1阶子图
-#             sub_g = Graph(VACANT_GRAPH_ID, is_undirected=is_undirected, eid_auto_increment=True)
-#             # 转换回字典以设置顶点和边属性
-#             sub_g.add_vertex(0, dict(v1_attrs))
-#             sub_g.add_vertex(1, dict(v2_attrs))
-#             sub_g.add_edge(0, 0, 1, dict(e_attrs))
-#             fre_sub_gs.append(sub_g)
-
-#     return fre_sub_gs
-
-# g = construct_graph(data_dir)
-# fre_sub_gs = generate_1edge_frequent_subgraphs(g, 10000, is_undirected=False)
-# print(f'Number of 1edge_frequent_pattern: {len(fre_sub_gs)}')
-
-def generate_1edge_frequent_subgraphs(g, min_support):
-    frequent_edges = {}
+def pruning_1edge_frequent_subgraph(min_support):
+    """Generate frequent subgraphs with one edge."""
+    g = construct_graph(data_dir)
+    subgraph = Graph(eid_auto_increment=False)
     for key, edge_list in g.edge_attribute_index.items():
-        if len(edge_list) >= min_support:
-            frequent_edges[key] = len(edge_list)
-    return frequent_edges
+        if(len(edge_list) >= min_support):
+            for frm, to, eid in edge_list:
+                frm_attrs = g.vertices[frm].attributes
+                to_attrs = g.vertices[to].attributes
+                edge_attributes = dict(key[0])
+                subgraph.add_vertex(frm, frm_attrs)
+                subgraph.add_vertex(to, to_attrs)
+                subgraph.add_edge(eid, frm, to, edge_attributes)
+    
+    return subgraph
 
-g = construct_graph(data_dir)
-fre_sub_gs = generate_1edge_frequent_subgraphs(g, 10000)
-frequent_edge_num = 0
-for key, value in fre_sub_gs.items():
-    frequent_edge_num += value
-print(f'Number of 1edge_frequent_pattern: {len(fre_sub_gs)}')
-print(f'Number of frequent edges: {frequent_edge_num}')
+subgraph = pruning_1edge_frequent_subgraph(10000)
+print(f'Number of vertices: {subgraph.get_num_vertices()}')
+print(f'Number of edges: {subgraph.get_num_edges()}')
