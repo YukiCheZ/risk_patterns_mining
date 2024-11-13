@@ -95,6 +95,50 @@ class Graph(object):
         self.vertices = dict()
         self.eid_auto_increment = eid_auto_increment
         self.counter = itertools.count()
+        # Add a new attribute for indexing edges by their attributes
+        self.edge_attribute_index = collections.defaultdict(list)
+
+    def add_vertex(self, vid, attributes=None):
+        """Add a vertex to the graph with multiple attributes.
+
+        Args:
+            vid: id of the vertex.
+            attributes: dictionary of vertex attributes (optional).
+        """
+        if vid in self.vertices:
+            print("Vertex already exists.")
+            return self
+        self.vertices[vid] = Vertex(vid, attributes)
+        return self
+
+    def add_edge(self, eid, frm, to, attributes=None):
+        """Add an edge to the graph with multiple attributes.
+
+        Args:
+            eid: edge id.
+            frm: source vertex id.
+            to: destination vertex id.
+            attributes: dictionary of edge attributes.
+        """
+        if frm not in self.vertices or to not in self.vertices:
+            print("Source or target vertex does not exist.")
+            return self
+        if self.eid_auto_increment:
+            eid = next(self.counter)
+        # Add the edge to the source vertex
+        self.vertices[frm].add_edge(eid, frm, to, attributes)
+        if self.is_undirected:
+            # Add the edge to the target vertex as well, if the graph is undirected
+            self.vertices[to].add_edge(eid, to, frm, attributes)
+        
+        # Update the edge_attribute_index
+        e_att = tuple(attributes.items()) if attributes else ()
+        frm_att = tuple(self.vertices[frm].attributes.items())
+        to_att = tuple(self.vertices[to].attributes.items())
+        key = (e_att, frm_att, to_att)
+        self.edge_attribute_index[key].append((frm, to, eid))
+        
+        return self
 
     def get_num_vertices(self):
         """Return number of vertices in the graph."""
@@ -110,38 +154,14 @@ class Graph(object):
             num_edges //= 2
         
         return num_edges
+    
+    def get_total_edges_from_index(self):
+        """Calculate the total number of edges using the edge_attribute_index.
 
-    def add_vertex(self, vid, attributes=None):
-        """Add a vertex to the graph with multiple attributes.
-
-        Args:
-            vid: id of the vertex.
-            attributes: dictionary of vertex attributes (optional).
+        Returns:
+            Total number of edges in the graph.
         """
-        if vid in self.vertices:
-            print(f"Vertex already exists.")
-            return self
-        self.vertices[vid] = Vertex(vid, attributes)
-        return self
-
-    def add_edge(self, eid, frm, to, attributes=None):
-        """Add an edge to the graph with multiple attributes.
-
-        Args:
-            eid: edge id.
-            frm: source vertex id.
-            to: destination vertex id.
-            attributes: dictionary of edge attributes.
-        """
-        if frm not in self.vertices or to not in self.vertices:
-            print(f"Source or target vertex does not exist.")
-            return self
-        if self.eid_auto_increment:
-            eid = next(self.counter)
-        # Add the edge to the source vertex
-        self.vertices[frm].add_edge(eid, frm, to, attributes)
-        if self.is_undirected:
-            # Add the edge to the target vertex as well, if the graph is undirected
-            self.vertices[to].add_edge(eid, to, frm, attributes)
-        return self
-
+        total_edges = 0
+        for edge_list in self.edge_attribute_index.values():
+            total_edges += len(edge_list)
+        return total_edges
