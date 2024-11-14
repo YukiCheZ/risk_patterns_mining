@@ -209,9 +209,35 @@ def pruning_1edge_frequent_subgraph(min_support):
                 subgraph.add_vertex(frm, frm_attrs)
                 subgraph.add_vertex(to, to_attrs)
                 subgraph.add_edge(eid, frm, to, edge_attributes)
-    
+    print("1 edge frequent subgraph generation completed.")
+
     return subgraph
 
-subgraph = pruning_1edge_frequent_subgraph(10000)
-print(f'Number of vertices: {subgraph.get_num_vertices()}')
-print(f'Number of edges: {subgraph.get_num_edges()}')
+def pruning_2edge_frequent_subgraph(min_support):
+    """Generate frequent subgraphs with two edges."""
+    sub_1e_g = pruning_1edge_frequent_subgraph(min_support)
+    sub_2e_patterns = collections.defaultdict(list)
+
+    for key1, edge_list in sub_1e_g.edge_attribute_index.items():
+        for frm1, to1, eid1 in edge_list:
+            vertex_to1 = sub_1e_g.vertices[to1]
+            for to2, edge_list2 in vertex_to1.edges.items():
+                if(to2 == frm1):
+                    continue
+                for edge2 in edge_list2:
+                    key2 = (tuple(edge2.attributes.items()), 
+                            tuple(vertex_to1.attributes.items()), 
+                            tuple(sub_1e_g.vertices[to2].attributes.items()))
+                    new_key = (key1, key2)
+                    sub_2e_patterns[new_key].append((eid1, edge2.eid, frm1, to1, to2))
+        
+    frequent_sub_2e_patterns = {
+        k: v for k, v in sub_2e_patterns.items() if len(v) >= min_support
+    }
+
+    return frequent_sub_2e_patterns
+
+
+fre_sub_2e_patterns = pruning_2edge_frequent_subgraph(10000)
+num_patterns = sum(len(v) for v in fre_sub_2e_patterns.values())
+print(f"Number of frequent subgraphs with two edges: {num_patterns}")
