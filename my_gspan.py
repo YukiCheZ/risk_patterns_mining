@@ -100,102 +100,6 @@ def construct_graph(data_dir):
     return graph
 
 
-class DFSedge(object):
-    """DFSedge class representing an edge in a DFS code."""
-
-    def __init__(self, frm, to, vevlb):
-        """Initialize DFSedge instance.
-        
-        Args:
-            frm (int): The starting vertex identifier.
-            to (int): The ending vertex identifier.
-            vevlb (tuple): A tuple containing (frm_attributes, edge_attributes, to_attributes).
-        """
-        self.frm = frm
-        self.to = to
-        self.vevlb = vevlb
-
-    def __eq__(self, other):
-        """Check equivalence of DFSedge based on attributes, ignoring vertex IDs.
-        
-        Two edges are considered equal if their vertex and edge attributes are the same.
-        """
-        # Unpack vertex and edge attributes
-        frm_attrs_self, edge_attrs_self, to_attrs_self = self.vevlb
-        frm_attrs_other, edge_attrs_other, to_attrs_other = other.vevlb
-
-        # Simplified comparison: compare attributes only
-        return (frm_attrs_self == frm_attrs_other and
-                edge_attrs_self == edge_attrs_other and
-                to_attrs_self == to_attrs_other)
-
-    def __ne__(self, other):
-        """Check if not equal."""
-        return not self.__eq__(other)
-
-    def __repr__(self):
-        """String representation of a DFSedge."""
-        return '(frm={}, to={}, vevlb={})'.format(self.frm, self.to, self.vevlb)
-    
-
-class DFScode(list):
-    """DFScode is a list of DFSedge, representing a sequence of edges in a DFS traversal."""
-
-    def __init__(self):
-        """Initialize DFScode."""
-        self.rmpath = list()
-
-    def __eq__(self, other):
-        """Check equivalence of DFScode."""
-        if len(self) != len(other):
-            return False
-        return all(self[i] == other[i] for i in range(len(self)))
-
-    def __ne__(self, other):
-        """Check if not equal."""
-        return not self.__eq__(other)
-
-    def __repr__(self):
-        """String representation of DFScode."""
-        return '[' + ', '.join(str(dfsedge) for dfsedge in self) + ']'
-
-    def push_back(self, frm, to, vevlb):
-        """Add an edge to the DFScode."""
-        self.append(DFSedge(frm, to, vevlb))
-        return self
-
-    def to_graph(self, gid=VACANT_GRAPH_ID, is_undirected=False):
-        """Construct a graph from the DFS code."""
-        g = Graph(gid, is_undirected=is_undirected, eid_auto_increment=True)
-        for dfsedge in self:
-            frm, to, (vlb1, elb, vlb2) = dfsedge.frm, dfsedge.to, dfsedge.vevlb
-            g.add_vertex(frm, vlb1)
-            g.add_vertex(to, vlb2)
-            g.add_edge(AUTO_EDGE_ID, frm, to, elb)
-        return g
-
-    def from_graph(self, g):
-        """Build a DFScode from a given graph."""
-        raise NotImplementedError('Not implemented yet.')
-
-    # 是否适用于多重图？
-    def build_rmpath(self):
-        """Build the right-most path in the DFS code."""
-        self.rmpath = []
-        old_frm = None
-        for i in range(len(self) - 1, -1, -1):
-            dfsedge = self[i]
-            frm, to = dfsedge.frm, dfsedge.to
-            if frm < to and (old_frm is None or to == old_frm):
-                self.rmpath.append(i)
-                old_frm = frm
-        return self
-
-    def get_num_vertices(self):
-        """Return the number of unique vertices in the DFS code."""
-        return len(set(dfsedge.frm for dfsedge in self) | set(dfsedge.to for dfsedge in self))
-
-
 def pruning_1edge_frequent_subgraph(min_support):
     """Generate frequent subgraphs with one edge."""
     g = construct_graph(data_dir)
@@ -213,21 +117,23 @@ def pruning_1edge_frequent_subgraph(min_support):
 
     return subgraph
 
-def pruning_2edge_frequent_subgraph(min_support):
+
+def pruning_2edge_frequent_subgraph(sub_1e_g, min_support):
     """Generate frequent subgraphs with two edges."""
-    sub_1e_g = pruning_1edge_frequent_subgraph(min_support)
     sub_2e_patterns = collections.defaultdict(list)
 
     for key1, edge_list in sub_1e_g.edge_attribute_index.items():
         for frm1, to1, eid1 in edge_list:
             vertex_to1 = sub_1e_g.vertices[to1]
             for to2, edge_list2 in vertex_to1.edges.items():
-                if(to2 == frm1):
+                if to2 == frm1:
                     continue
                 for edge2 in edge_list2:
                     key2 = (tuple(edge2.attributes.items()), 
                             tuple(vertex_to1.attributes.items()), 
                             tuple(sub_1e_g.vertices[to2].attributes.items()))
+                    if key1 == key2:
+                        continue
                     new_key = (key1, key2)
                     sub_2e_patterns[new_key].append((eid1, edge2.eid, frm1, to1, to2))
         
@@ -235,9 +141,49 @@ def pruning_2edge_frequent_subgraph(min_support):
         k: v for k, v in sub_2e_patterns.items() if len(v) >= min_support
     }
 
+    print("2 edge frequent patterns generation completed.")
     return frequent_sub_2e_patterns
 
 
-fre_sub_2e_patterns = pruning_2edge_frequent_subgraph(10000)
-num_patterns = sum(len(v) for v in fre_sub_2e_patterns.values())
-print(f"Number of frequent subgraphs with two edges: {num_patterns}")
+def pruning_3edge_frequent_subgraph(sub_1e_g, sub_2e_patterns, min_support):
+    # 用于存储两种模式的三条边候选模式及其支持度
+    sub_3e_patterns_mode1 = collections.defaultdict(int)
+    sub_3e_patterns_mode2 = collections.defaultdict(int)
+
+    for (key1, key2), edge_list in sub_2e_patterns.items():
+
+        for eid1, eid2, vid1, vid2, vid3 in edge_list:
+            v3 = sub_1e_g.vertices[vid3]
+            for vid4, edge_list_right in v3.edges.items():
+                if vid4 == vid2:
+                    continue
+                for edge3 in edge_list_right:
+                    key3 = (tuple(edge3.attributes.items()), 
+                            tuple(v3.attributes.items()), 
+                            tuple(sub_1e_g.vertices[vid4].attributes.items()))
+                    if (key2, key3) not in sub_2e_patterns.keys() or key1 == key3:
+                        continue
+                    new_key = (key1, key2, key3)
+                    if vid4 != vid1:
+                        sub_3e_patterns_mode1[new_key] += 1
+                    else:
+                        if (key3, key1) not in sub_2e_patterns.keys():
+                            continue
+                        sub_3e_patterns_mode2[new_key] += 1
+        
+    # Step 4: 返回满足支持度的模式
+    frequent_sub_3e_patterns_mode1 = {
+        k: v for k, v in sub_3e_patterns_mode1.items() if v >= min_support
+    }
+    frequent_sub_3e_patterns_mode2 = {
+        k: v for k, v in sub_3e_patterns_mode2.items() if v >= min_support
+    }
+
+    return frequent_sub_3e_patterns_mode1, frequent_sub_3e_patterns_mode2
+
+
+sub_1e_g = pruning_1edge_frequent_subgraph(10000)
+fre_sub_2e_patterns = pruning_2edge_frequent_subgraph(sub_1e_g, 10000)
+fre_sub_3e_patterns_mode1, fre_sub_3e_patterns_mode2 = pruning_3edge_frequent_subgraph(sub_1e_g, fre_sub_2e_patterns, 10000)
+
+print(f"Number of frequent 3-edge subgraphs: {len(fre_sub_3e_patterns_mode1) + len(fre_sub_3e_patterns_mode2)}")
