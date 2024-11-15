@@ -182,6 +182,31 @@ def pruning_3edge_frequent_subgraph(sub_1e_g, sub_2e_patterns, min_support):
     return frequent_sub_3e_patterns_mode1, frequent_sub_3e_patterns_mode2
 
 
+def generate_result_json(frequent_sub_3e_patterns_mode1, frequent_sub_3e_patterns_mode2)
+    result = []
+
+    for key, support in frequent_sub_3e_patterns_mode1.items():
+        nodes = []
+        edges = []
+        key1, key2, key3 = key
+        edge1_attrs, vertex1_attrs, vertex2_attrs = key1
+        edge2_attrs, _, vertex3_attrs = key2
+        edge3_attrs, _, vertex4_attrs = key3
+        v1_att = dict(vertex1_attrs)
+        v2_att = dict(vertex2_attrs)
+        v3_att = dict(vertex3_attrs)
+        v4_att = dict(vertex4_attrs)
+        e1_att = dict(edge1_attrs)
+        e2_att = dict(edge2_attrs)
+        e3_att = dict(edge3_attrs)
+        nodes.append({
+            'id': v1_att['vid'],
+            'label': v1_att['name']
+        })
+
+
+
+
 sub_1e_g = pruning_1edge_frequent_subgraph(10000)
 fre_sub_2e_patterns = pruning_2edge_frequent_subgraph(sub_1e_g, 10000)
 fre_sub_3e_patterns_mode1, fre_sub_3e_patterns_mode2 = pruning_3edge_frequent_subgraph(sub_1e_g, fre_sub_2e_patterns, 10000)
