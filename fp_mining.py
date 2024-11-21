@@ -120,15 +120,32 @@ def construct_graph(data_dir):
 
 
 def pruning_1edge_frequent_subgraph(min_support):
-    """Generate frequent subgraphs with one edge."""
+    """Generate frequent subgraphs with one edge based on optimized support calculation."""
     origin_graph, edge_attributes_index = construct_graph(data_dir)
     fre1_subgraph = Graph(gid=VACANT_GRAPH_ID)
     fre1_patterns_index = collections.defaultdict(list)
 
     for key, edge_list in edge_attributes_index.items():
-        if len(edge_list) >= min_support:
+        # 初始化计数器
+        source_counter = collections.Counter()
+        target_counter = collections.Counter()
+
+        # 遍历边列表，统计 source_id 和 target_id 的频次
+        for source_id, target_id in edge_list:
+            source_counter[source_id] += 1
+            target_counter[target_id] += 1
+
+        # 计算支持度
+        sn = len(source_counter)  # 不同 source_id 的数量
+        tn = len(target_counter)  # 不同 target_id 的数量
+        frequency = min(sn, tn)
+
+        if frequency >= min_support:
+            # 满足支持度条件时记录模式
             fre1_patterns_index[key] = edge_list
             name_source, name_target, amt, strategy_name, buscode = key
+
+            # 构造频繁1阶子图
             for source_id, target_id in edge_list:
                 fre1_subgraph.add_vertex(source_id, {'name': name_source})
                 fre1_subgraph.add_vertex(target_id, {'name': name_target})
@@ -137,7 +154,7 @@ def pruning_1edge_frequent_subgraph(min_support):
                     to=target_id,
                     attributes={'amt': amt, 'strategy_name': strategy_name, 'buscode': buscode}
                 )
-    
+
     print("1 edge frequent subgraph generation completed.")
     print(f"Number of vertices of frequent 1-edge subgraph: {fre1_subgraph.get_num_vertices()}")
     print(f"Number of edges of frequent 1-edge subgraph: {fre1_subgraph.get_num_edges()}")
@@ -169,17 +186,35 @@ def pruning_2edge_frequent_subgraph(fre1_subgraph, fre1_patterns_index, min_supp
                     key = (name_v1, name_v2, name_v3, amt_e1, strategy_name_e1, buscode_e1, amt_e2, strategy_name_e2, buscode_e2)
                     sub_2e_patterns_index[key].append((vid1, vid2, vid3))
 
-    fre2_patterns_index = {
-        key: edge_list for key, edge_list in sub_2e_patterns_index.items() if len(edge_list) >= min_support
-    }
+    # fre2_patterns_index = {
+    #     key: edge_list for key, edge_list in sub_2e_patterns_index.items() if len(edge_list) >= min_support
+    # }
+    fre2_patterns_index = {}
+    for key, edge_list in sub_2e_patterns_index.items():
+        v1_counter = collections.Counter()
+        v2_counter = collections.Counter()
+        v3_counter = collections.Counter()
+        for vid1, vid2, vid3 in edge_list:
+            v1_counter[vid1] += 1
+            v2_counter[vid2] += 1
+            v3_counter[vid3] += 1
+        
+        v1n = len(v1_counter)
+        v2n = len(v2_counter)
+        v3n = len(v3_counter)
+        frequency = min(v1n, v2n, v3n)
+        if frequency >= min_support:
+            fre2_patterns_index[key] = edge_list
+
+
     print("2 edge frequent subgraph generation completed.")
     print(f"Number of frequent 2-edge patterns: {len(fre2_patterns_index)}")
     return fre2_patterns_index
 
 
 def pruning_3edge_frequent_subgraph(fre1_subgraph, fre2_patterns_index, min_support):
-    sub_3e_patterns_mode1_index = collections.defaultdict(int)
-    sub_3e_patterns_mode2_index = collections.defaultdict(int)
+    sub_3e_patterns_mode1_index = collections.defaultdict(list)
+    sub_3e_patterns_mode2_index = collections.defaultdict(list)
 
     for key_e_12, edge_list in fre2_patterns_index.items():
         name_v1, name_v2, name_v3, amt_e1, strategy_name_e1, buscode_e1, amt_e2, strategy_name_e2, buscode_e2 = key_e_12
@@ -205,21 +240,58 @@ def pruning_3edge_frequent_subgraph(fre1_subgraph, fre2_patterns_index, min_supp
                            amt_e2, strategy_name_e2, buscode_e2, 
                            amt_e3, strategy_name_e3, buscode_e3)
                     if vid1 != vid4:
-                        sub_3e_patterns_mode1_index[key] += 1
+                        sub_3e_patterns_mode1_index[key].append((vid1, vid2, vid3, vid4))
                     else:
                         key_e_31 = (name_v3, name_v1, name_v2, 
                                     amt_e3, strategy_name_e3, buscode_e3, 
                                     amt_e1, strategy_name_e1, buscode_e1)
                         if key_e_31 in fre2_patterns_index.keys():
-                            sub_3e_patterns_mode2_index[key] += 1
+                            sub_3e_patterns_mode2_index[key].append((vid1, vid2, vid3))
 
-    fre3_patterns_mode1_index = {
-        key: count for key, count in sub_3e_patterns_mode1_index.items() if count >= min_support
-    }
+    # fre3_patterns_mode1_index = {
+    #     key: count for key, count in sub_3e_patterns_mode1_index.items() if count >= min_support
+    # }
 
-    fre3_patterns_mode2_index = {
-        key: count for key, count in sub_3e_patterns_mode2_index.items() if count >= min_support
-    }
+    # fre3_patterns_mode2_index = {
+    #     key: count for key, count in sub_3e_patterns_mode2_index.items() if count >= min_support
+    # }
+
+    fre3_patterns_mode1_index = {}
+    for key, edge_list in sub_3e_patterns_mode1_index.items():
+        v1_counter = collections.Counter()
+        v2_counter = collections.Counter()
+        v3_counter = collections.Counter()
+        v4_counter = collections.Counter()
+        for vid1, vid2, vid3, vid4 in edge_list:
+            v1_counter[vid1] += 1
+            v2_counter[vid2] += 1
+            v3_counter[vid3] += 1
+            v4_counter[vid4] += 1
+
+        v1n = len(v1_counter)
+        v2n = len(v2_counter)
+        v3n = len(v3_counter)
+        v4n = len(v4_counter)
+        frequency = min(v1n, v2n, v3n, v4n)
+        if frequency >= min_support:
+            fre3_patterns_mode1_index[key] = frequency
+
+    fre3_patterns_mode2_index = {}
+    for key, edge_list in sub_3e_patterns_mode2_index.items():
+        v1_counter = collections.Counter()
+        v2_counter = collections.Counter()
+        v3_counter = collections.Counter()
+        for vid1, vid2, vid3 in edge_list:
+            v1_counter[vid1] += 1
+            v2_counter[vid2] += 1
+            v3_counter[vid3] += 1
+
+        v1n = len(v1_counter)
+        v2n = len(v2_counter)
+        v3n = len(v3_counter)
+        frequency = min(v1n, v2n, v3n)
+        if frequency >= min_support:
+            fre3_patterns_mode2_index[key] = frequency
 
     print("3 edge frequent subgraph generation completed.")
     print(f"Number of frequent 3-edge patterns (mode 1): {len(fre3_patterns_mode1_index)}")
@@ -231,7 +303,7 @@ def pruning_3edge_frequent_subgraph(fre1_subgraph, fre2_patterns_index, min_supp
 def generate_result_json(fre3_patterns_mode1_index, fre3_patterns_mode2_index):
     result = []
 
-    for key, support in fre3_patterns_mode1_index.items():
+    for key, frequency in fre3_patterns_mode1_index.items():
         nodes = []
         edges = []
         name_v1, name_v2, name_v3, name_v4, amt_e1, strategy_name_e1, buscode_e1, amt_e2, strategy_name_e2, buscode_e2, amt_e3, strategy_name_e3, buscode_e3 = key
@@ -273,13 +345,13 @@ def generate_result_json(fre3_patterns_mode1_index, fre3_patterns_mode2_index):
             "buscode": str(buscode_e3)
         })
         result.append({
-            "frequency": support,
+            "frequency": frequency,
             "nodes": nodes,
             "edges": edges
         })
 
 
-    for key, support in fre3_patterns_mode2_index.items():
+    for key, frequency in fre3_patterns_mode2_index.items():
         nodes = []
         edges = []
         name_v1, name_v2, name_v3, name_v4, amt_e1, strategy_name_e1, buscode_e1, amt_e2, strategy_name_e2, buscode_e2, amt_e3, strategy_name_e3, buscode_e3 = key
@@ -316,11 +388,17 @@ def generate_result_json(fre3_patterns_mode1_index, fre3_patterns_mode2_index):
             "strategy_name": str(strategy_name_e3),
             "buscode": str(buscode_e3)
         })
+        result.append({
+            "frequency": frequency,
+            "nodes": nodes,
+            "edges": edges
+        })
 
     with open("result.json", "w") as file:
         json.dump(result, file, indent=2)
 
     print("Result JSON generation completed.")
+
 
 fre1_subgraph, fre1_patterns_index = pruning_1edge_frequent_subgraph(10000)
 fre2_patterns_index = pruning_2edge_frequent_subgraph(fre1_subgraph, fre1_patterns_index, 10000)
